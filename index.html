@@ -4,14 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nisa Store</title>
-    <!-- استدعاء مكتبة html2canvas لحفظ الفاتورة كصورة مباشرة -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         * { box-sizing: border-box; font-family: Tahoma, sans-serif; }
         body { margin: 0; background: #f4f4f4; padding: 10px; direction: rtl; }
         .container { max-width: 100%; margin: auto; background: #fff; padding: 15px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
         
-        /* تنسيق الفاتورة لتكون مدمجة ومناسبة للموبايل */
         .invoice-box { background: #fff; padding: 10px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 15px; font-size: 13px; }
         .invoice-header { text-align: center; margin-bottom: 10px; }
         .invoice-header h2 { margin: 0; color: #d81b60; font-size: 18px; }
@@ -37,13 +35,11 @@
 <div class="container">
     <div style="text-align: center; font-weight: bold; margin-bottom: 10px; color: #333;">طباعة وفواتير إلكترونية</div>
 
-    <!-- أزرار التحكم -->
     <div class="btn-container">
         <button class="btn-save" onclick="downloadInvoiceAsImage()">حفظ كصورة</button>
         <button class="btn-print" onclick="window.print()">طباعة A4</button>
     </div>
 
-    <!-- الجزء الخاص بالفاتورة المراد التقاطها -->
     <div id="invoiceContent" class="invoice-box">
         <div class="invoice-header">
             <h2>Nisa Store POS</h2>
@@ -92,18 +88,22 @@
 </div>
 
 <script>
-    // دالة أوتوماتيكية لتحويل الفاتورة لصورة وتحميلها على الموبايل بضغطة زر
     function downloadInvoiceAsImage() {
         const container = document.getElementById('invoiceContent');
         
-        // استخدام مكتبة html2canvas لالتقاط الفاتورة بدقة عالية
         html2canvas(container, { scale: 2 }).then(canvas => {
-            const link = document.createElement('a');
-            link.download = 'Invoice-' + Date.now() + '.png';
-            link.href = canvas.toDataURL('image/png');
-            link.click();
+            const imageStr = canvas.toDataURL('image/png');
+            
+            // حل متوافق تماماً مع التطبيق لتنزيل الصورة مباشرة بدون رسائل معقدة
+            const downloadLink = document.createElement('a');
+            downloadLink.href = imageStr;
+            downloadLink.download = 'NisaStore-Invoice-' + Date.now() + '.png';
+            
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
         }).catch(err => {
-            alert('حدث خطأ أثناء حفظ الصورة، حاول مرة أخرى.');
+            alert('تعذر حفظ الصورة، يجدر المحاولة مرة أخرى.');
         });
     }
 </script>
