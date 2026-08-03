@@ -8,6 +8,8 @@
 
   <!-- 🔗 1. ربط ملف Web App Manifest -->
   <link rel="manifest" href="manifest.json">
+  <!-- 📸 مكتبة تحويل الفاتورة إلى صورة (HTML2Canvas) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
   <style>
     :root {
@@ -88,18 +90,100 @@
     .btn-danger { background-color: #ef4444 !important; }
     .btn-success { background-color: #10b981 !important; }
     .btn-info { background-color: #3b82f6 !important; }
+    .btn-warning { background-color: #f59e0b !important; }
 
     .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; }
 
     /* ========================================================= */
-    /* 🖨️ تنسيق الفاتورة لورق A4 / A5 عند الطباعة */
+    /* 🖨️ تنسيق الفاتورة لورق A4 / A5 وللنسخ (Screenshot) */
     /* ========================================================= */
     #receipt { display: none; }
+
+    .receipt-preview-box {
+      background: #fff;
+      padding: 20px;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+      width: 100%;
+      max-width: 600px;
+      margin: 0 auto;
+      color: #000;
+    }
+
+    .a4-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #ec4899;
+      padding-bottom: 15px;
+      margin-bottom: 20px;
+    }
+    .a4-header img { width: 70px; height: 70px; border-radius: 10px; object-fit: cover; }
+    .a4-header-info { text-align: left; font-size: 14px; color: #4b5563; }
+    .a4-title { font-size: 26px; color: #ec4899; font-weight: bold; margin-bottom: 5px; }
+
+    .a4-details-box {
+      display: flex;
+      justify-content: space-between;
+      background: #fdf2f8;
+      padding: 12px 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      border: 1px solid #fbcfe8;
+    }
+
+    .a4-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+    .a4-table th {
+      background-color: #ec4899 !important;
+      color: white !important;
+      padding: 10px;
+      font-size: 14px;
+      border: 1px solid #db2777;
+    }
+    .a4-table td {
+      padding: 10px;
+      border: 1px solid #e5e7eb;
+      font-size: 13px;
+      text-align: center;
+    }
+
+    .a4-summary-box {
+      width: 300px;
+      margin-right: auto;
+      background: #fafafa;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 15px;
+      font-size: 14px;
+    }
+    .a4-summary-row { display: flex; justify-content: space-between; padding: 5px 0; }
+    .a4-summary-total {
+      font-size: 18px;
+      font-weight: bold;
+      color: #ec4899;
+      border-top: 2px solid #ec4899;
+      padding-top: 8px;
+      margin-top: 5px;
+    }
+
+    .a4-footer {
+      margin-top: 40px;
+      text-align: center;
+      border-top: 1px solid #e5e7eb;
+      padding-top: 15px;
+      font-size: 12px;
+      color: #6b7280;
+    }
 
     @media print {
       body * { visibility: hidden; }
       #receipt, #receipt * { visibility: visible; }
-      
       #receipt {
         display: block !important;
         position: absolute;
@@ -107,82 +191,8 @@
         top: 0;
         width: 100%;
         padding: 20mm;
-        font-family: 'Segoe UI', Arial, sans-serif;
-        color: #000;
         background: #fff;
       }
-
-      .a4-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-bottom: 2px solid #ec4899;
-        padding-bottom: 15px;
-        margin-bottom: 20px;
-      }
-      .a4-header img { width: 70px; height: 70px; border-radius: 10px; object-fit: cover; }
-      .a4-header-info { text-align: left; font-size: 14px; color: #4b5563; }
-      .a4-title { font-size: 26px; color: #ec4899; font-weight: bold; margin-bottom: 5px; }
-
-      .a4-details-box {
-        display: flex;
-        justify-content: space-between;
-        background: #fdf2f8;
-        padding: 12px 20px;
-        border-radius: 8px;
-        margin-bottom: 20px;
-        font-size: 14px;
-        border: 1px solid #fbcfe8;
-      }
-
-      .a4-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 20px;
-      }
-      .a4-table th {
-        background-color: #ec4899 !important;
-        color: white !important;
-        padding: 10px;
-        font-size: 14px;
-        border: 1px solid #db2777;
-        -webkit-print-color-adjust: exact;
-      }
-      .a4-table td {
-        padding: 10px;
-        border: 1px solid #e5e7eb;
-        font-size: 13px;
-        text-align: center;
-      }
-
-      .a4-summary-box {
-        width: 300px;
-        margin-right: auto;
-        background: #fafafa;
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        padding: 15px;
-        font-size: 14px;
-      }
-      .a4-summary-row { display: flex; justify-content: space-between; padding: 5px 0; }
-      .a4-summary-total {
-        font-size: 18px;
-        font-weight: bold;
-        color: #ec4899;
-        border-top: 2px solid #ec4899;
-        padding-top: 8px;
-        margin-top: 5px;
-      }
-
-      .a4-footer {
-        margin-top: 40px;
-        text-align: center;
-        border-top: 1px solid #e5e7eb;
-        padding-top: 15px;
-        font-size: 12px;
-        color: #6b7280;
-      }
-
       .no-print { display: none !important; }
     }
 
@@ -227,8 +237,9 @@
       <button class="nav-btn" onclick="switchSection('customersSection', this)">👥 العملاء</button>
       <button class="nav-btn admin-only" onclick="switchSection('inventorySection', this)">📦 المخزون</button>
       <button class="nav-btn" onclick="switchSection('salesHistorySection', this)">🧾 عرض المبيعات</button>
-      <button class="nav-btn admin-only" onclick="switchSection('dailyReportSection', this)">📊 تقارير اليومية</button>
-      <button class="nav-btn" onclick="switchSection('pdfPrintSection', this)">📄 طباعة فواتير PDF</button>
+      <button class="nav-btn admin-only" onclick="switchSection('expensesSection', this)">💸 المصروفات اليومية</button>
+      <button class="nav-btn admin-only" onclick="switchSection('dailyReportSection', this)">📊 تقارير اليومية والأرباح</button>
+      <button class="nav-btn" onclick="switchSection('pdfPrintSection', this)">📄 طباعة وفواتير إلكترونية</button>
 
       <div style="margin-top: auto; padding-top: 10px;">
         <button onclick="logout()" class="btn-danger" style="font-size: 12px; padding: 8px;">خروج 🚪</button>
@@ -367,7 +378,7 @@
           <div style="max-height: 450px; overflow-y: auto;">
             <table>
               <thead>
-                <tr><th>رقم الفاتورة</th><th>التاريخ</th><th>اسم العميل</th><th>الإجمالي</th><th>طباعة / مرتجع</th></tr>
+                <tr><th>رقم الفاتورة</th><th>التاريخ</th><th>اسم العميل</th><th>الإجمالي</th><th>خيارات الفاتورة</th></tr>
               </thead>
               <tbody id="salesHistoryTable"></tbody>
             </table>
@@ -375,22 +386,60 @@
         </div>
       </div>
 
-      <!-- 📊 تقارير اليومية -->
+      <!-- 💸 المصروفات اليومية -->
+      <div id="expensesSection" class="section-page admin-only">
+        <div class="card">
+          <h2>💸 تسجيل المصروفات اليومية (مواصلات، وجبات، إلخ)</h2>
+          <div class="grid-2">
+            <div>
+              <label style="font-size: 12px; font-weight: bold;">بيان المصروف (ايه اللي اتصرف؟):</label>
+              <input type="text" id="expenseReason" placeholder="مثال: مواصلات، وجبات غداء...">
+            </div>
+            <div>
+              <label style="font-size: 12px; font-weight: bold;">المبلغ (بالجنيه):</label>
+              <input type="number" id="expenseAmount" placeholder="مثال: 50 أو 100">
+            </div>
+          </div>
+          <button onclick="addExpense()" class="btn-warning" style="padding: 12px; margin-top: 5px;">➕ تسجيل وإضافة المصروف</button>
+        </div>
+
+        <div class="card" style="margin-top: 15px;">
+          <h2>📋 قائمة مصروفات اليوم</h2>
+          <div style="max-height: 250px; overflow-y: auto;">
+            <table>
+              <thead>
+                <tr><th>التفاصيل</th><th>المبلغ</th><th>الوقت</th><th>إلغاء</th></tr>
+              </thead>
+              <tbody id="expensesTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 📊 تقارير اليومية والأرباح -->
       <div id="dailyReportSection" class="section-page admin-only">
         <div class="card">
-          <h2>📊 تقرير مبيعات اليوم 📅</h2>
+          <h2>📊 تقرير المبيعات والأرباح اليومية 📅</h2>
           <div class="grid-2">
             <div class="summary">
               <h3>عدد فواتير اليوم:</h3>
-              <p id="dailyCount" style="color:var(--primary); font-size: 24px; font-weight: bold; margin-top: 5px;">0 فاتورة</p>
+              <p id="dailyCount" style="color:var(--primary); font-size: 22px; font-weight: bold; margin-top: 5px;">0 فاتورة</p>
             </div>
             <div class="summary">
               <h3>إجمالي مبيعات اليوم:</h3>
-              <p id="dailySalesTotal" style="color:#3b82f6; font-size: 24px; font-weight: bold; margin-top: 5px;">0 ج.م</p>
+              <p id="dailySalesTotal" style="color:#3b82f6; font-size: 22px; font-weight: bold; margin-top: 5px;">0 ج.م</p>
             </div>
-            <div class="summary" style="grid-column: span 1 / -1;">
-              <h3>صافي أرباح اليوم:</h3>
-              <p id="dailyProfitTotal" style="color:#10b981; font-size: 26px; font-weight: bold; margin-top: 5px;">0 ج.م</p>
+            <div class="summary">
+              <h3>إجمالي أرباح اليوم (قبل المصاريف):</h3>
+              <p id="dailyGrossProfit" style="color:#8b5cf6; font-size: 22px; font-weight: bold; margin-top: 5px;">0 ج.م</p>
+            </div>
+            <div class="summary">
+              <h3>إجمالي مصروفات اليوم:</h3>
+              <p id="dailyExpensesTotal" style="color:#ef4444; font-size: 22px; font-weight: bold; margin-top: 5px;">0 ج.م</p>
+            </div>
+            <div class="summary" style="grid-column: span 1 / -1; background: #ecfdf5; border: 1px solid #10b981;">
+              <h3>صافي أرباح اليوم (بعد خصم المصاريف):</h3>
+              <p id="dailyNetProfit" style="color:#10b981; font-size: 26px; font-weight: bold; margin-top: 5px;">0 ج.م</p>
             </div>
           </div>
         </div>
@@ -399,21 +448,81 @@
       <!-- 📄 طباعة فواتير PDF -->
       <div id="pdfPrintSection" class="section-page">
         <div class="card">
-          <h2>📄 طباعة الفواتير بمعاينة A4 / PDF</h2>
-          <p style="font-size: 13px; color: #6b7280; margin-bottom: 15px;">اختر الفاتورة للطباعة أو التصدير كـ PDF مقاس A4:</p>
+          <h2>📄 طباعة وفواتير إلكترونية (سكرين شوت / PDF)</h2>
+          <p style="font-size: 13px; color: #6b7280; margin-bottom: 15px;">اختر الفاتورة لمعاينتها، ثم يمكنك طباعتها أو أخذ "سكرين شوت" / حفظها كصورة لإرسالها للعميل:</p>
+          
           <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-            <select id="pdfInvoiceSelect">
-              <option value="">-- اختر الفاتورة --</option>
+            <select id="pdfInvoiceSelect" onchange="previewSelectedInvoiceForShare()">
+              <option value="">-- اختر الفاتورة للمعاينة --</option>
             </select>
-            <button onclick="printSelectedInvoicePDF()" class="btn-info" style="width: auto; padding: 0 20px;">🖨️ طباعة A4 / PDF</button>
+            <button onclick="printSelectedInvoicePDF()" class="btn-info" style="width: auto; padding: 0 15px;">🖨️ طباعة A4</button>
+            <button onclick="downloadInvoiceAsImage()" class="btn-success" style="width: auto; padding: 0 15px;">📸 حفظ كصورة (سكرين شوت)</button>
           </div>
+
+          <!-- معاينة مباشرة للفاتورة -->
+          <div id="sharePreviewContainer" style="display:none; margin-top: 20px;">
+            <div id="receiptImageWrapper" class="receipt-preview-box">
+              <div class="a4-header">
+                <div>
+                  <h1 class="a4-title" id="pReceiptStoreName">🌸 Nisa Store 🌸</h1>
+                  <p style="font-size: 14px; color: #6b7280;">فاتورة مبيعات ورسمية</p>
+                </div>
+                <div class="a4-header-info">
+                  <p><strong>رقم الفاتورة:</strong> <span id="pReceiptId"></span></p>
+                  <p><strong>التاريخ والوقت:</strong> <span id="pReceiptDate"></span></p>
+                </div>
+              </div>
+
+              <div class="a4-details-box">
+                <div><strong>العميل:</strong> <span id="pReceiptCustomer">عميل نقدي</span></div>
+                <div><strong>حالة الدفع:</strong> مدفوع كاش ✅</div>
+              </div>
+
+              <table class="a4-table">
+                <thead>
+                  <tr>
+                    <th style="width: 5%;">#</th>
+                    <th style="text-align: right; padding-right: 15px;">اسم المنتج / الصنف</th>
+                    <th style="width: 15%;">الكمية</th>
+                    <th style="width: 20%;">سعر الوحدة</th>
+                    <th style="width: 20%;">الإجمالي</th>
+                  </tr>
+                </thead>
+                <tbody id="pReceiptItems"></tbody>
+              </table>
+
+              <div class="a4-summary-box">
+                <div class="a4-summary-row">
+                  <span>المجموع الفرعي:</span>
+                  <span id="pReceiptSubTotal">0 ج.م</span>
+                </div>
+                <div class="a4-summary-row">
+                  <span>مصاريف الشحن:</span>
+                  <span id="pReceiptShipping">0 ج.م</span>
+                </div>
+                <div class="a4-summary-row">
+                  <span>الخصم:</span>
+                  <span id="pReceiptDiscount">0 ج.م</span>
+                </div>
+                <div class="a4-summary-row a4-summary-total">
+                  <span>الإجمالي النهائي:</span>
+                  <span id="pReceiptTotal">0 ج.م</span>
+                </div>
+              </div>
+
+              <div class="a4-footer">
+                <p>شكراً لتعاملكم معنا في Nisa Store! ✨ - نعدكم دائماً بالأفضل</p>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
 
     </div>
   </div>
 
-  <!-- 🖨️ نموذج الفاتورة المخصص لطباعة A4 / A5 -->
+  <!-- 🖨️ نموذج الفاتورة المخفي للطباعة التقليدية -->
   <div id="receipt">
     <div class="a4-header">
       <div>
@@ -489,6 +598,7 @@
     let customers = getStorage('nisa_customers', []);
     let products = getStorage('nisa_products', []);
     let sales = getStorage('nisa_sales', []);
+    let expenses = getStorage('nisa_expenses', []); // بيانات المصروفات
     let cart = [];
     let selectedCustomer = null;
 
@@ -500,6 +610,7 @@
       if(btn) btn.classList.add('active');
 
       if(sectionId === 'dailyReportSection') renderDailyReports();
+      if(sectionId === 'expensesSection') renderExpenses();
     }
 
     function login() {
@@ -538,12 +649,14 @@
       renderInventoryTable();
       renderSalesHistory();
       renderPdfSelectOptions();
+      renderExpenses();
     }
 
     function applyStoreSettings() {
       document.getElementById('loginStoreName').innerText = storeSettings.name;
       document.getElementById('appHeaderTitle').innerText = storeSettings.name;
       document.getElementById('receiptStoreName').innerText = storeSettings.name;
+      document.getElementById('pReceiptStoreName').innerText = storeSettings.name;
 
       if(storeSettings.logo) {
         document.getElementById('headerLogo').src = storeSettings.logo;
@@ -551,6 +664,55 @@
       }
     }
 
+    // ==========================================
+    // 💸 إدارة المصروفات اليومية
+    // ==========================================
+    function addExpense() {
+      const reason = document.getElementById('expenseReason').value.trim();
+      const amount = parseFloat(document.getElementById('expenseAmount').value) || 0;
+
+      if(!reason || amount <= 0) return alert('برجاء كتابة بيان المصروف والمبلغ بشكل صحيح!');
+
+      expenses.push({ id: Date.now(), date: new Date().toISOString(), reason, amount });
+      setStorage('nisa_expenses', expenses);
+      renderExpenses();
+      alert('تم تسجيل المصروف بنجاح!');
+
+      document.getElementById('expenseReason').value = '';
+      document.getElementById('expenseAmount').value = '';
+    }
+
+    function deleteExpense(id) {
+      if(confirm('هل تريد حذف هذا المصروف؟')) {
+        expenses = expenses.filter(e => e.id !== id);
+        setStorage('nisa_expenses', expenses);
+        renderExpenses();
+      }
+    }
+
+    function renderExpenses() {
+      const tbody = document.getElementById('expensesTable');
+      if(!tbody) return;
+      tbody.innerHTML = '';
+
+      const todayStr = new Date().toDateString();
+      const todayExpenses = expenses.filter(e => new Date(e.date).toDateString() === todayStr);
+
+      todayExpenses.forEach(e => {
+        tbody.innerHTML += `
+          <tr>
+            <td>${e.reason}</td>
+            <td style="color: #ef4444; font-weight: bold;">${e.amount} ج.م</td>
+            <td>${new Date(e.date).toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit'})}</td>
+            <td><button class="btn-danger" style="padding:3px 6px; font-size:11px;" onclick="deleteExpense(${e.id})">✕</button></td>
+          </tr>
+        `;
+      });
+    }
+
+    // ==========================================
+    // 👥 إدارة العملاء والمنتجات
+    // ==========================================
     function addNewCustomer() {
       const name = document.getElementById('cNameInput').value.trim();
       const phone = document.getElementById('cPhoneInput').value.trim() || '-';
@@ -778,7 +940,6 @@
         `;
       });
       document.getElementById('rItems').innerHTML = rItemsHtml;
-
       window.print();
     }
 
@@ -786,82 +947,109 @@
       const tbody = document.getElementById('salesHistoryTable');
       if(!tbody) return;
       tbody.innerHTML = '';
+
       sales.slice().reverse().forEach(s => {
         tbody.innerHTML += `
           <tr>
             <td>#${String(s.id).slice(-6)}</td>
-            <td>${new Date(s.date).toLocaleDateString('ar-EG')}</td>
-            <td>${s.customer || 'عميل نقدي'}</td>
+            <td>${new Date(s.date).toLocaleString('ar-EG')}</td>
+            <td>${s.customer}</td>
             <td>${s.total} ج.م</td>
             <td>
-              <button class="btn-info" style="padding:3px 8px; font-size:11px; width:auto; margin-left:3px;" onclick="printInvoice(${s.id})">طباعة 🖨️</button>
-              <button class="btn-danger" style="padding:3px 8px; font-size:11px; width:auto;" onclick="refundOrder(${s.id})">مرتجع 🔄</button>
+              <button class="btn-info" style="padding:3px 6px; font-size:11px; width:auto;" onclick="printInvoice(${s.id})">🖨️ طباعة</button>
             </td>
           </tr>
         `;
       });
     }
 
-    function refundOrder(id) {
-      if(confirm('هل تريد إرجاع هذه الفاتورة ومسحها وإعادة المنتجات للمخزن؟')) {
-        let index = sales.findIndex(s => s.id === id);
-        if(index > -1) {
-          let sale = sales[index];
-          if(sale.items) {
-            sale.items.forEach(item => {
-              let p = products.find(prod => prod.id === item.id);
-              if(p) p.qty += item.qty;
-            });
-            setStorage('nisa_products', products);
-          }
-          sales.splice(index, 1);
-          setStorage('nisa_sales', sales);
-          renderProducts();
-          renderInventoryTable();
-          renderSalesHistory();
-          renderPdfSelectOptions();
-          alert('تم المرتجع بنجاح!');
-        }
-      }
-    }
-
-    function renderDailyReports() {
-      let today = new Date().toDateString();
-      let todaySales = sales.filter(s => new Date(s.date).toDateString() === today);
-
-      let count = todaySales.length;
-      let totalSales = todaySales.reduce((sum, s) => sum + s.total, 0);
-      let totalProfit = todaySales.reduce((sum, s) => sum + s.profit, 0);
-
-      document.getElementById('dailyCount').innerText = count + ' فاتورة';
-      document.getElementById('dailySalesTotal').innerText = totalSales + ' ج.م';
-      document.getElementById('dailyProfitTotal').innerText = totalProfit + ' ج.م';
-    }
-
     function renderPdfSelectOptions() {
       const select = document.getElementById('pdfInvoiceSelect');
       if(!select) return;
       select.innerHTML = '<option value="">-- اختر الفاتورة --</option>';
+
       sales.slice().reverse().forEach(s => {
         select.innerHTML += `<option value="${s.id}">فاتورة #${String(s.id).slice(-6)} - ${s.customer} (${s.total} ج.م)</option>`;
       });
     }
 
-    function printSelectedInvoicePDF() {
-      const id = parseInt(document.getElementById('pdfInvoiceSelect').value);
-      if(!id) return alert('الرجاء اختيار فاتورة من القائمة!');
-      printInvoice(id);
+    function previewSelectedInvoiceForShare() {
+      const saleId = document.getElementById('pdfInvoiceSelect').value;
+      const container = document.getElementById('sharePreviewContainer');
+      if(!saleId) {
+        container.style.display = 'none';
+        return;
+      }
+
+      let s = sales.find(x => x.id == saleId);
+      if(!s) return;
+
+      container.style.display = 'block';
+      document.getElementById('pReceiptId').innerText = '#' + String(s.id).slice(-6);
+      document.getElementById('pReceiptCustomer').innerText = s.customer || 'عميل نقدي';
+      document.getElementById('pReceiptDate').innerText = new Date(s.date).toLocaleString('ar-EG');
+      document.getElementById('pReceiptSubTotal').innerText = (s.subTotal || s.total) + ' ج.م';
+      document.getElementById('pReceiptShipping').innerText = (s.shipping || 0) + ' ج.م';
+      document.getElementById('pReceiptDiscount').innerText = (s.disc || 0) + ' ج.م';
+      document.getElementById('pReceiptTotal').innerText = s.total + ' ج.م';
+
+      let itemsHtml = '';
+      s.items.forEach((i, idx) => {
+        itemsHtml += `
+          <tr>
+            <td>${idx + 1}</td>
+            <td style="text-align: right; padding-right: 15px;">${i.name}</td>
+            <td>${i.qty}</td>
+            <td>${i.sell} ج.م</td>
+            <td>${i.sell * i.qty} ج.م</td>
+          </tr>
+        `;
+      });
+      document.getElementById('pReceiptItems').innerHTML = itemsHtml;
     }
 
-    // ==========================================
-    // ⚙️ 2. تسجيل الـ Service Worker ليعمل أوفلاين
-    // ==========================================
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('service_worker.js')
-          .then((reg) => console.log('✅ Service Worker Registered:', reg.scope))
-          .catch((err) => console.log('❌ Service Worker Registration Failed:', err));
+    function printSelectedInvoicePDF() {
+      const saleId = document.getElementById('pdfInvoiceSelect').value;
+      if(!saleId) return alert('برجاء اختيار الفاتورة أولاً!');
+      printInvoice(saleId);
+    }
+
+    // 📸 ميزة تصدير الفاتورة كصورة (سكرين شوت إلكتروني للعميل)
+    function downloadInvoiceAsImage() {
+      const saleId = document.getElementById('pdfInvoiceSelect').value;
+      if(!saleId) return alert('برجاء اختيار الفاتورة أولاً!');
+      
+      previewSelectedInvoiceForShare();
+      const element = document.getElementById('receiptImageWrapper');
+
+      html2canvas(element, { scale: 2 }).then(canvas => {
+        const link = document.createElement('a');
+        link.download = `Nisa-Store-Invoice-${saleId}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
       });
+    }
+
+    function renderDailyReports() {
+      const todayStr = new Date().toDateString();
+      const todaySales = sales.filter(s => new Date(s.date).toDateString() === todayStr);
+
+      let count = todaySales.length;
+      let totalSalesAmount = todaySales.reduce((sum, s) => sum + s.total, 0);
+      let grossProfit = todaySales.reduce((sum, s) => sum + (s.profit || 0), 0);
+
+      // حساب مصروفات اليوم
+      let todayExpensesAmount = expenses
+        .filter(e => new Date(e.date).toDateString() === todayStr)
+        .reduce((sum, e) => sum + e.amount, 0);
+
+      let netProfit = grossProfit - todayExpensesAmount;
+
+      document.getElementById('dailyCount').innerText = count + ' فاتورة';
+      document.getElementById('dailySalesTotal').innerText = totalSalesAmount + ' ج.م';
+      document.getElementById('dailyGrossProfit').innerText = grossProfit + ' ج.م';
+      document.getElementById('dailyExpensesTotal').innerText = todayExpensesAmount + ' ج.م';
+      document.getElementById('dailyNetProfit').innerText = netProfit + ' ج.م';
     }
   </script>
 </body>
