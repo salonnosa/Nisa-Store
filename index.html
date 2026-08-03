@@ -598,7 +598,7 @@
     let customers = getStorage('nisa_customers', []);
     let products = getStorage('nisa_products', []);
     let sales = getStorage('nisa_sales', []);
-    let expenses = getStorage('nisa_expenses', []); // بيانات المصروفات
+    let expenses = getStorage('nisa_expenses', []);
     let cart = [];
     let selectedCustomer = null;
 
@@ -732,6 +732,7 @@
     function renderCustomers() {
       const tbody = document.getElementById('customersTable');
       const select = document.getElementById('invoiceCustomerSelect');
+      if(!tbody || !select) return;
       tbody.innerHTML = '';
       select.innerHTML = '<option value="">-- اختر العميل (اختياري) --</option>';
 
@@ -759,31 +760,40 @@
       setStorage('nisa_products', products);
       renderProducts();
       renderInventoryTable();
-      alert('تم إضافة المنتج بنجاح!');
+      alert('تم إضافة المنتج بنجاح للمخزن!');
 
       document.getElementById('pName').value = '';
       document.getElementById('pBuyPrice').value = '';
       document.getElementById('pSellPrice').value = '';
       document.getElementById('pQty').value = '';
       document.getElementById('pBarcode').value = '';
-      switchSection('inventorySection');
     }
 
-    function deleteProductPermanently(id) {
-      if(confirm('هل أنت تأكد من إزالة هذا المنتج كلياً وبشكل نهائي من المخزن؟')) {
-        products = products.filter(p => p.id !== id);
-        setStorage('nisa_products', products);
-        renderProducts();
-        renderInventoryTable();
-      }
+    function renderProducts() {
+      const grid = document.getElementById('productList');
+      if(!grid) return;
+      grid.innerHTML = '';
+      const search = document.getElementById('searchProduct').value.toLowerCase();
+
+      const filtered = products.filter(p => p.name.toLowerCase().includes(search) || (p.barcode && p.barcode.includes(search)));
+
+      filtered.forEach(p => {
+        grid.innerHTML += `
+          <div class="product-card" onclick="addToCart(${p.id})">
+            <img src="${p.img}">
+            <h4>${p.name}</h4>
+            <div class="price">${p.sell} ج.م</div>
+            <div class="stock">متبقي: ${p.qty}</div>
+          </div>
+        `;
+      });
     }
 
     function renderInventoryTable() {
       const tbody = document.getElementById('inventoryManageTable');
       if(!tbody) return;
       tbody.innerHTML = '';
-
-      products.forEach(p => {
+      products.forEach((p, idx) => {
         tbody.innerHTML += `
           <tr>
             <td>${p.name}</td>
@@ -791,83 +801,85 @@
             <td>${p.buy} ج.م</td>
             <td>${p.sell} ج.م</td>
             <td>${p.qty}</td>
-            <td><button class="btn-danger" style="padding:4px 8px; font-size:11px;" onclick="deleteProductPermanently(${p.id})">حذف نهائي ❌</button></td>
+            <td><button class="btn-danger" style="padding:4px 8px; font-size:11px;" onclick="deleteProduct(${idx})">حذف</button></td>
           </tr>
         `;
       });
     }
 
-    function renderProducts() {
-      const list = document.getElementById('productList');
-      const search = document.getElementById('searchProduct').value.toLowerCase();
-      list.innerHTML = '';
-
-      const filtered = products.filter(p => p.name.toLowerCase().includes(search) || (p.barcode && p.barcode.includes(search)));
-
-      filtered.forEach(p => {
-        list.innerHTML += `
-          <div class="product-card" onclick="addToCart(${p.id})">
-            <img src="${p.img}">
-            <h4>${p.name}</h4>
-            <div class="price">${p.sell} ج.م</div>
-            <div class="stock">المتاح: ${p.qty}</div>
-          </div>
-        `;
-      });
+    function deleteProduct(idx) {
+      if(confirm('هل أنت متأكد من حذف هذا المنتج نهائياً؟')) {
+        products.splice(idx, 1);
+        setStorage('nisa_products', products);
+        renderProducts();
+        renderInventoryTable();
+      }
     }
 
+    // ==========================================
+    // 🛒 إدارة سلة المبيعات والفواتير
+    // ==========================================
     function addToCart(id) {
-      let prod = products.find(p => p.id === id);
-      if(!prod || prod.qty <= 0) return alert('المنتج نفد من المخزن!');
+      const product = products.find(p => p.id === id);
+      if(!product) return;
+      if(product.qty <= 0) return alert('عذراً، هذا المنتج نفذ من المخزن!');
 
-      let item = cart.find(c => c.id === id);
-      if(item) {
-        if(item.qty < prod.qty) item.qty++;
-        else alert('الكمية بالمخزن لا تكفي');
+      const existing = cart.find(item => item.id === id);
+      if(existing) {
+        if(existing.qty + 1 > product.qty) return alert('الكمية المطلوبة أكبر من المتبقي بالمخزن!');
+        existing.qty++;
       } else {
-        cart.push({ ...prod, qty: 1 });
+        cart.push({ id: product.id, name: product.name, price: product.sell, buy: product.buy, qty: 1 });
       }
       renderCart();
     }
 
-    function changeQty(index, delta) {
-      let item = cart[index];
-      let prod = products.find(p => p.id === item.id);
-      if(delta === 1 && item.qty >= prod.qty) return alert('الكمية بالمخزن لا تكفي');
-      item.qty += delta;
-      if(item.qty <= 0) cart.splice(index, 1);
+    function changeQty(id, delta) {
+      const item = cart.find(i => i.id === id);
+      const product = products.find(p => p.id === id);
+      if(!item || !product) return;
+
+      const newQty = item.qty + delta;
+      if(newQty > product.qty) return alert('الكمية غير متاحة بالمخزن!');
+
+      if(newQty <= 0) {
+        cart = cart.filter(i => i.id !== id);
+      } else {
+        item.qty = newQty;
+      }
       renderCart();
     }
 
-    function removeFromCart(index) {
-      cart.splice(index, 1);
+    function removeFromCart(id) {
+      cart = cart.filter(i => i.id !== id);
       renderCart();
     }
 
     function clearCart() {
       cart = [];
-      document.getElementById('invoiceCustomerSelect').value = '';
       selectedCustomer = null;
-      document.getElementById('shippingFee').value = '0';
-      document.getElementById('discountFee').value = '0';
+      document.getElementById('invoiceCustomerSelect').value = "";
+      document.getElementById('shippingFee').value = "0";
+      document.getElementById('discountFee').value = "0";
       renderCart();
     }
 
     function renderCart() {
       const tbody = document.getElementById('cartTable');
+      if(!tbody) return;
       tbody.innerHTML = '';
 
-      cart.forEach((item, index) => {
+      cart.forEach(item => {
         tbody.innerHTML += `
           <tr>
             <td>${item.name}</td>
             <td>
-              <button class="qty-btn" onclick="changeQty(${index}, -1)">-</button>
+              <button class="qty-btn btn-info" onclick="changeQty(${item.id}, -1)">-</button>
               ${item.qty}
-              <button class="qty-btn" onclick="changeQty(${index}, 1)">+</button>
+              <button class="qty-btn btn-success" onclick="changeQty(${item.id}, 1)">+</button>
             </td>
-            <td>${item.sell * item.qty}</td>
-            <td><button class="btn-danger" style="padding:2px 6px; width:auto;" onclick="removeFromCart(${index})">✕</button></td>
+            <td>${item.price * item.qty} ج.م</td>
+            <td><button class="btn-danger" style="padding:3px 6px; font-size:11px;" onclick="removeFromCart(${item.id})">✕</button></td>
           </tr>
         `;
       });
@@ -875,89 +887,93 @@
     }
 
     function calculateTotal() {
-      let sub = cart.reduce((sum, item) => sum + (item.sell * item.qty), 0);
-      let ship = parseFloat(document.getElementById('shippingFee').value) || 0;
-      let disc = parseFloat(document.getElementById('discountFee').value) || 0;
-      let total = (sub + ship) - disc;
+      let subTotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+      let shipping = parseFloat(document.getElementById('shippingFee').value) || 0;
+      let discount = parseFloat(document.getElementById('discountFee').value) || 0;
+      let grandTotal = subTotal + shipping - discount;
 
-      document.getElementById('subTotal').innerText = sub + ' ج.م';
-      document.getElementById('showDiscount').innerText = '- ' + disc + ' ج.م';
-      document.getElementById('grandTotal').innerText = (total < 0 ? 0 : total) + ' ج.م';
+      document.getElementById('subTotal').innerText = subTotal + ' ج.م';
+      document.getElementById('showDiscount').innerText = '- ' + discount + ' ج.م';
+      document.getElementById('grandTotal').innerText = grandTotal + ' ج.م';
     }
 
     function completeOrder() {
-      if(cart.length === 0) return alert('الفاتورة فارغة!');
+      if(cart.length === 0) return alert('السلة فارغة!');
 
+      let subTotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+      let totalBuyCost = cart.reduce((sum, item) => sum + (item.buy * item.qty), 0);
+      let shipping = parseFloat(document.getElementById('shippingFee').value) || 0;
+      let discount = parseFloat(document.getElementById('discountFee').value) || 0;
+      let grandTotal = subTotal + shipping - discount;
+      let grossProfit = subTotal - totalBuyCost;
+
+      // خصم الكميات من المخزن الأساسي
       cart.forEach(item => {
         let p = products.find(prod => prod.id === item.id);
         if(p) p.qty -= item.qty;
       });
       setStorage('nisa_products', products);
 
-      let totalBuy = cart.reduce((sum, item) => sum + (item.buy * item.qty), 0);
-      let totalSell = cart.reduce((sum, item) => sum + (item.sell * item.qty), 0);
-      let disc = parseFloat(document.getElementById('discountFee').value) || 0;
-      let ship = parseFloat(document.getElementById('shippingFee').value) || 0;
-      let netProfit = (totalSell - disc) - totalBuy;
-      let grandTotal = (totalSell + ship) - disc;
+      const newSale = {
+        id: 'NS-' + Math.floor(100000 + Math.random() * 900000),
+        date: new Date().toISOString(),
+        customer: selectedCustomer ? selectedCustomer.name : 'عميل نقدي',
+        items: [...cart],
+        subTotal,
+        shipping,
+        discount,
+        grandTotal,
+        grossProfit
+      };
 
-      let saleId = Date.now();
-      let customerName = selectedCustomer ? selectedCustomer.name : 'عميل نقدي';
-      sales.push({ id: saleId, date: new Date().toISOString(), customer: customerName, profit: netProfit, total: grandTotal, subTotal: totalSell, shipping: ship, disc, items: [...cart] });
+      sales.unshift(newSale);
       setStorage('nisa_sales', sales);
 
-      printInvoice(saleId);
+      // تجهيز بيانات الفاتورة للطباعة التقليدية
+      document.getElementById('rInvoiceId').innerText = newSale.id;
+      document.getElementById('rDate').innerText = new Date(newSale.date).toLocaleString('ar-EG');
+      document.getElementById('rName').innerText = newSale.customer;
+      document.getElementById('rSubTotal').innerText = subTotal + ' ج.م';
+      document.getElementById('rShipping').innerText = shipping + ' ج.م';
+      document.getElementById('rDiscount').innerText = discount + ' ج.م';
+      document.getElementById('rTotal').innerText = grandTotal + ' ج.م';
 
-      clearCart();
+      let rItemsTbody = document.getElementById('rItems');
+      rItemsTbody.innerHTML = '';
+      cart.forEach((item, index) => {
+        rItemsTbody.innerHTML += `
+          <tr>
+            <td>${index + 1}</td>
+            <td style="text-align: right; padding-right: 15px;">${item.name}</td>
+            <td>${item.qty}</td>
+            <td>${item.price} ج.م</td>
+            <td>${item.price * item.qty} ج.م</td>
+          </tr>
+        `;
+      });
+
       renderProducts();
       renderInventoryTable();
       renderSalesHistory();
       renderPdfSelectOptions();
-    }
 
-    function printInvoice(saleId) {
-      let s = sales.find(x => x.id === saleId);
-      if(!s) return;
-
-      document.getElementById('rInvoiceId').innerText = '#' + String(s.id).slice(-6);
-      document.getElementById('rName').innerText = s.customer || 'عميل نقدي';
-      document.getElementById('rDate').innerText = new Date(s.date).toLocaleString('ar-EG');
-      document.getElementById('rSubTotal').innerText = (s.subTotal || s.total) + ' ج.م';
-      document.getElementById('rShipping').innerText = (s.shipping || 0) + ' ج.م';
-      document.getElementById('rDiscount').innerText = (s.disc || 0) + ' ج.م';
-      document.getElementById('rTotal').innerText = s.total + ' ج.م';
-
-      let rItemsHtml = '';
-      s.items.forEach((i, idx) => {
-        rItemsHtml += `
-          <tr>
-            <td>${idx + 1}</td>
-            <td style="text-align: right; padding-right: 15px;">${i.name}</td>
-            <td>${i.qty}</td>
-            <td>${i.sell} ج.م</td>
-            <td>${i.sell * i.qty} ج.م</td>
-          </tr>
-        `;
-      });
-      document.getElementById('rItems').innerHTML = rItemsHtml;
+      // فتح نافذة الطباعة الفيزيائية مباشرة
       window.print();
+      clearCart();
     }
 
     function renderSalesHistory() {
       const tbody = document.getElementById('salesHistoryTable');
       if(!tbody) return;
       tbody.innerHTML = '';
-
-      sales.slice().reverse().forEach(s => {
+      sales.forEach(s => {
         tbody.innerHTML += `
           <tr>
-            <td>#${String(s.id).slice(-6)}</td>
-            <td>${new Date(s.date).toLocaleString('ar-EG')}</td>
+            <td>${s.id}</td>
+            <td>${new Date(s.date).toLocaleDateString('ar-EG')}</td>
             <td>${s.customer}</td>
-            <td>${s.total} ج.م</td>
-            <td>
-              <button class="btn-info" style="padding:3px 6px; font-size:11px; width:auto;" onclick="printInvoice(${s.id})">🖨️ طباعة</button>
-            </td>
+            <td style="color:var(--primary); font-weight:bold;">${s.grandTotal} ج.م</td>
+            <td><button class="btn-info" style="padding:4px 8px; font-size:11px;" onclick="previewInvoice('${s.id}')">معاينة</button></td>
           </tr>
         `;
       });
@@ -966,89 +982,109 @@
     function renderPdfSelectOptions() {
       const select = document.getElementById('pdfInvoiceSelect');
       if(!select) return;
-      select.innerHTML = '<option value="">-- اختر الفاتورة --</option>';
-
-      sales.slice().reverse().forEach(s => {
-        select.innerHTML += `<option value="${s.id}">فاتورة #${String(s.id).slice(-6)} - ${s.customer} (${s.total} ج.م)</option>`;
+      select.innerHTML = '<option value="">-- اختر الفاتورة للمعاينة --</option>';
+      sales.forEach(s => {
+        select.innerHTML += `<option value="${s.id}">فاتورة رقم: ${s.id} (${s.customer} - ${s.grandTotal} ج.م)</option>`;
       });
     }
 
     function previewSelectedInvoiceForShare() {
-      const saleId = document.getElementById('pdfInvoiceSelect').value;
-      const container = document.getElementById('sharePreviewContainer');
-      if(!saleId) {
-        container.style.display = 'none';
+      const id = document.getElementById('pdfInvoiceSelect').value;
+      if(!id) {
+        document.getElementById('sharePreviewContainer').style.display = 'none';
         return;
       }
+      previewInvoice(id);
+    }
 
-      let s = sales.find(x => x.id == saleId);
-      if(!s) return;
+    function previewInvoice(id) {
+      const sale = sales.find(s => s.id === id);
+      if(!sale) return;
 
-      container.style.display = 'block';
-      document.getElementById('pReceiptId').innerText = '#' + String(s.id).slice(-6);
-      document.getElementById('pReceiptCustomer').innerText = s.customer || 'عميل نقدي';
-      document.getElementById('pReceiptDate').innerText = new Date(s.date).toLocaleString('ar-EG');
-      document.getElementById('pReceiptSubTotal').innerText = (s.subTotal || s.total) + ' ج.م';
-      document.getElementById('pReceiptShipping').innerText = (s.shipping || 0) + ' ج.م';
-      document.getElementById('pReceiptDiscount').innerText = (s.disc || 0) + ' ج.م';
-      document.getElementById('pReceiptTotal').innerText = s.total + ' ج.م';
+      document.getElementById('pdfInvoiceSelect').value = id;
+      document.getElementById('sharePreviewContainer').style.display = 'block';
 
-      let itemsHtml = '';
-      s.items.forEach((i, idx) => {
-        itemsHtml += `
+      document.getElementById('pReceiptId').innerText = sale.id;
+      document.getElementById('pReceiptDate').innerText = new Date(sale.date).toLocaleString('ar-EG');
+      document.getElementById('pReceiptCustomer').innerText = sale.customer;
+      document.getElementById('pReceiptSubTotal').innerText = sale.subTotal + ' ج.م';
+      document.getElementById('pReceiptShipping').innerText = sale.shipping + ' ج.م';
+      document.getElementById('pReceiptDiscount').innerText = sale.discount + ' ج.م';
+      document.getElementById('pReceiptTotal').innerText = sale.grandTotal + ' ج.م';
+
+      const tbody = document.getElementById('pReceiptItems');
+      tbody.innerHTML = '';
+      sale.items.forEach((item, index) => {
+        tbody.innerHTML += `
           <tr>
-            <td>${idx + 1}</td>
-            <td style="text-align: right; padding-right: 15px;">${i.name}</td>
-            <td>${i.qty}</td>
-            <td>${i.sell} ج.م</td>
-            <td>${i.sell * i.qty} ج.م</td>
+            <td>${index + 1}</td>
+            <td style="text-align: right; padding-right: 15px;">${item.name}</td>
+            <td>${item.qty}</td>
+            <td>${item.price} ج.م</td>
+            <td>${item.price * item.qty} ج.م</td>
           </tr>
         `;
       });
-      document.getElementById('pReceiptItems').innerHTML = itemsHtml;
+      switchSection('pdfPrintSection');
     }
 
     function printSelectedInvoicePDF() {
-      const saleId = document.getElementById('pdfInvoiceSelect').value;
-      if(!saleId) return alert('برجاء اختيار الفاتورة أولاً!');
-      printInvoice(saleId);
+      const container = document.getElementById('sharePreviewContainer');
+      if(!container || container.style.display === 'none') return alert('برجاء اختيار الفاتورة ومعاينتها أولاً!');
+      window.print();
     }
 
-    // 📸 ميزة تصدير الفاتورة كصورة (سكرين شوت إلكتروني للعميل)
+    // ==========================================
+    // 📸 دالة أخذ سكرين شوت وحفظ الفاتورة كصورة نظيفة (معدلة ومحدثة)
+    // ==========================================
     function downloadInvoiceAsImage() {
-      const saleId = document.getElementById('pdfInvoiceSelect').value;
-      if(!saleId) return alert('برجاء اختيار الفاتورة أولاً!');
-      
-      previewSelectedInvoiceForShare();
-      const element = document.getElementById('receiptImageWrapper');
+        const previewContainer = document.getElementById('sharePreviewContainer');
+        
+        if (!previewContainer || previewContainer.style.display === 'none') {
+            alert('برجاء اختيار الفاتورة ومعاينتها أولاً قبل حفظها كصورة!');
+            return;
+        }
 
-      html2canvas(element, { scale: 2 }).then(canvas => {
-        const link = document.createElement('a');
-        link.download = `Nisa-Store-Invoice-${saleId}.png`;
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-      });
+        const invoiceElement = document.getElementById('receiptImageWrapper');
+        const invoiceIdText = document.getElementById('pReceiptId').innerText.trim() || 'invoice';
+
+        html2canvas(invoiceElement, {
+            scale: 2, 
+            useCORS: true,
+            logging: false,
+            windowWidth: invoiceElement.scrollWidth,
+            windowHeight: invoiceElement.scrollHeight
+        }).then(canvas => {
+            const imageURL = canvas.toDataURL('image/png');
+            
+            const downloadLink = document.createElement('a');
+            downloadLink.href = imageURL;
+            downloadLink.download = `Nisa-Store-Invoice-${invoiceIdText}.png`;
+            
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+        }).catch(err => {
+            console.error("خطأ أثناء حفظ الفاتورة:", err);
+            alert("حدث خطأ أثناء حفظ الفاتورة، حاول مرة أخرى.");
+        });
     }
 
     function renderDailyReports() {
       const todayStr = new Date().toDateString();
       const todaySales = sales.filter(s => new Date(s.date).toDateString() === todayStr);
+      const todayExpensesList = expenses.filter(e => new Date(e.date).toDateString() === todayStr);
 
       let count = todaySales.length;
-      let totalSalesAmount = todaySales.reduce((sum, s) => sum + s.total, 0);
-      let grossProfit = todaySales.reduce((sum, s) => sum + (s.profit || 0), 0);
-
-      // حساب مصروفات اليوم
-      let todayExpensesAmount = expenses
-        .filter(e => new Date(e.date).toDateString() === todayStr)
-        .reduce((sum, e) => sum + e.amount, 0);
-
-      let netProfit = grossProfit - todayExpensesAmount;
+      let salesTotal = todaySales.reduce((sum, s) => sum + s.grandTotal, 0);
+      let grossProfit = todaySales.reduce((sum, s) => sum + s.grossProfit, 0);
+      let totalExpenses = todayExpensesList.reduce((sum, e) => sum + e.amount, 0);
+      let netProfit = grossProfit - totalExpenses;
 
       document.getElementById('dailyCount').innerText = count + ' فاتورة';
-      document.getElementById('dailySalesTotal').innerText = totalSalesAmount + ' ج.م';
+      document.getElementById('dailySalesTotal').innerText = salesTotal + ' ج.م';
       document.getElementById('dailyGrossProfit').innerText = grossProfit + ' ج.م';
-      document.getElementById('dailyExpensesTotal').innerText = todayExpensesAmount + ' ج.م';
+      document.getElementById('dailyExpensesTotal').innerText = totalExpenses + ' ج.م';
       document.getElementById('dailyNetProfit').innerText = netProfit + ' ج.م';
     }
   </script>
