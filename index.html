@@ -1,112 +1,580 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nisa Store</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <style>
-        * { box-sizing: border-box; font-family: Tahoma, sans-serif; }
-        body { margin: 0; background: #f4f4f4; padding: 10px; direction: rtl; }
-        .container { max-width: 100%; margin: auto; background: #fff; padding: 15px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        
-        .invoice-box { background: #fff; padding: 10px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 15px; font-size: 13px; }
-        .invoice-header { text-align: center; margin-bottom: 10px; }
-        .invoice-header h2 { margin: 0; color: #d81b60; font-size: 18px; }
-        
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
-        th, td { border: 1px solid #ddd; padding: 6px; text-align: center; }
-        th { background: #d81b60; color: white; }
-        
-        .totals { margin-top: 10px; font-size: 13px; }
-        .totals div { display: flex; justify-content: space-between; margin-bottom: 4px; }
-        .grand-total { font-weight: bold; color: #d81b60; font-size: 15px; border-top: 1px dashed #ddd; padding-top: 5px; }
-        
-        .btn-container { display: flex; gap: 10px; margin-bottom: 15px; }
-        button { flex: 1; padding: 10px; border: none; border-radius: 5px; color: white; font-weight: bold; cursor: pointer; font-size: 13px; }
-        .btn-save { background: #2e7d32; }
-        .btn-print { background: #1976d2; }
-        
-        .footer-note { text-align: center; font-size: 11px; color: #666; margin-top: 10px; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nisa Store - نظام الإدارة والمبيعات</title>
+  <!-- استدعاء مكتبة html2canvas لحفظ الفاتورة كصورة مباشرة -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    :root {
+      --primary: #d81b60;
+      --primary-dark: #ad1457;
+      --bg-color: #f4f4f4;
+      --white: #ffffff;
+      --text-color: #333333;
+    }
+    * { box-sizing: border-box; font-family: Tahoma, sans-serif; }
+    body { margin: 0; background: var(--bg-color); color: var(--text-color); direction: rtl; padding-bottom: 50px; }
+    
+    /* شاشة تسجيل الدخول */
+    #loginSection {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      height: 100vh; background: linear-gradient(135deg, var(--primary), #4a148c); color: white; padding: 20px;
+    }
+    .login-box { background: white; padding: 30px; border-radius: 12px; width: 100%; max-width: 350px; color: var(--text-color); box-shadow: 0 4px 15px rgba(0,0,0,0.2); text-align: center; }
+    .login-box h2 { color: var(--primary); margin-bottom: 20px; }
+    .login-box input { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 6px; }
+
+    /* شريط التنقل العلوي */
+    header { background: var(--white); padding: 10px 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+    .logo-area { display: flex; align-items: center; gap: 10px; }
+    .logo-area img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+    .logo-area h3 { margin: 0; color: var(--primary); font-size: 16px; }
+
+    /* الأقسام والتبويبات */
+    .app-section { display: none; padding: 15px; max-width: 800px; margin: auto; }
+    .app-section.active { display: block; }
+
+    .nav-tabs { display: flex; background: #fff; overflow-x: auto; padding: 5px; gap: 5px; border-bottom: 1px solid #ddd; }
+    .nav-tab-btn { background: #eee; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; white-space: nowrap; font-size: 12px; font-weight: bold; }
+    .nav-tab-btn.active { background: var(--primary); color: white; }
+
+    /* الأزرار العامة */
+    button { cursor: pointer; border: none; border-radius: 5px; padding: 8px 12px; font-weight: bold; font-size: 12px; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-success { background: #2e7d32; color: white; }
+    .btn-danger { background: #c62828; color: white; }
+    .btn-info { background: #0288d1; color: white; }
+
+    /* الجداول والبطاقات */
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; background: white; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+    th { background: var(--primary); color: white; }
+
+    .card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 15px; }
+    .form-group { margin-bottom: 10px; }
+    .form-group label { display: block; margin-bottom: 5px; font-size: 12px; font-weight: bold; }
+    .form-group input, .form-group select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px; }
+
+    /* شبكة المنتجات في نقاط البيع */
+    .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; margin-top: 10px; }
+    .product-card { background: white; border: 1px solid #ddd; border-radius: 6px; padding: 8px; text-align: center; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .product-card img { width: 60px; height: 60px; object-fit: cover; border-radius: 50%; margin-bottom: 5px; }
+    .product-card h4 { margin: 5px 0; font-size: 12px; color: var(--text-color); }
+    .product-card .price { color: var(--primary); font-weight: bold; font-size: 12px; }
+    .product-card .stock { font-size: 10px; color: #666; }
+
+    /* الفاتورة المدمجة الجديدة للموبايل */
+    .invoice-box { background: #fff; padding: 10px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 15px; font-size: 13px; }
+    .invoice-header { text-align: center; margin-bottom: 10px; }
+    .invoice-header h2 { margin: 0; color: var(--primary); font-size: 18px; }
+    .totals { margin-top: 10px; font-size: 13px; }
+    .totals div { display: flex; justify-content: space-between; margin-bottom: 4px; }
+    .grand-total { font-weight: bold; color: var(--primary); font-size: 15px; border-top: 1px dashed #ddd; paddingTop: 5px; }
+    .footer-note { text-align: center; font-size: 11px; color: #666; margin-top: 10px; }
+  </style>
 </head>
 <body>
 
-<div class="container">
-    <div style="text-align: center; font-weight: bold; margin-bottom: 10px; color: #333;">طباعة وفواتير إلكترونية</div>
+  <!-- شاشة الدخول -->
+  <div id="loginSection">
+    <div class="login-box">
+      <h2>Nisa Store</h2>
+      <p style="font-size: 12px; color: #666; margin-bottom: 15px;">تسجيل الدخول للنظام</p>
+      <input type="text" id="usernameInput" placeholder="اسم المستخدم" value="محمود الجندي">
+      <input type="password" id="passwordInput" placeholder="كلمة المرور" value="1234">
+      <button class="btn-primary" style="width: 100%; padding: 10px;" onclick="handleLogin()">دخول للنظام</button>
+    </div>
+  </div>
 
-    <div class="btn-container">
-        <button class="btn-save" onclick="downloadInvoiceAsImage()">حفظ كصورة</button>
-        <button class="btn-print" onclick="window.print()">طباعة A4</button>
+  <!-- التطبيق الرئيسي (مخفي حتى يتم تسجيل الدخول) -->
+  <div id="mainApp" style="display: none;">
+    <header>
+      <div class="logo-area">
+        <img src="https://i.imgur.com/7k123ab.png" alt="Logo" onerror="this.src='https://via.placeholder.com/40'">
+        <h3>Nisa Store POS</h3>
+      </div>
+      <button class="btn-danger" style="padding: 5px 10px; font-size: 11px;" onclick="logout()">خروج 🚪</button>
+    </header>
+
+    <!-- شريط التبويبات -->
+    <div class="nav-tabs">
+      <button class="nav-tab-btn active" onclick="switchSection('newInvoiceSection')">🛒 نقطة البيع</button>
+      <button class="nav-tab-btn" onclick="switchSection('inventorySection')">📦 المخزن</button>
+      <button class="nav-tab-btn" onclick="switchSection('salesHistorySection')">📋 المبيعات</button>
+      <button class="nav-tab-btn" onclick="switchSection('pdfPrintSection')">🖨️ طباعة وفواتير</button>
+      <button class="nav-tab-btn" onclick="switchSection('reportsSection')">📊 التقارير والأرباح</button>
     </div>
 
-    <div id="invoiceContent" class="invoice-box">
-        <div class="invoice-header">
-            <h2>Nisa Store POS</h2>
-            <p style="margin: 2px 0; font-size: 11px; color: #555;">فاتورة مبيعات رسمية</p>
+    <!-- 1. قسم نقطة البيع (POS) -->
+    <div id="newInvoiceSection" class="app-section active">
+      <div class="card">
+        <h3>إنشاء فاتورة جديدة</h3>
+        <div class="form-group">
+          <label>اختر العميل:</label>
+          <input type="text" id="invoiceCustomerSelect" placeholder="اسم العميل (مثال: محمود الجندي)" value="محمود الجندي">
         </div>
-
-        <div style="margin-bottom: 8px; font-size: 12px; background: #fff5f8; padding: 6px; border-radius: 5px;">
-            <div><strong>رقم الفاتورة:</strong> <span id="pInvoiceId">NS-406051</span></div>
-            <div><strong>التاريخ:</strong> <span id="pReceiptDate">2026/08/4</span></div>
-            <div><strong>العميل:</strong> <span id="pReceiptCustomer">محمود الجندي</span></div>
-            <div><strong>حالة الدفع:</strong> مدفوع كاش ✔️</div>
+        <div class="form-group">
+          <label>بحث عن منتج:</label>
+          <input type="text" id="searchProduct" placeholder="اكتب اسم المنتج..." oninput="renderProducts()">
         </div>
+        <div id="productList" class="product-grid"></div>
+      </div>
 
+      <div class="card">
+        <h4>سلة المشتريات</h4>
         <table>
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th>المنتج</th>
-                    <th>الكمية</th>
-                    <th>السعر</th>
-                    <th>الإجمالي</th>
-                </tr>
-            </thead>
-            <tbody id="pReceiptItems">
-                <tr>
-                    <td>1</td>
-                    <td>فيلورا جولد</td>
-                    <td>1</td>
-                    <td>400 ج.م</td>
-                    <td>400 ج.م</td>
-                </tr>
-            </tbody>
+          <thead>
+            <tr>
+              <th>المنتج</th>
+              <th>الكمية</th>
+              <th>الإجمالي</th>
+              <th>حذف</th>
+            </tr>
+          </thead>
+          <tbody id="cartTable">
+            <tr><td colspan="4" style="color: #886565;">السلة فارغة حالياً</td></tr>
+          </tbody>
         </table>
-
-        <div class="totals">
-            <div><span>المجموع الفرعي:</span> <span id="pReceiptSubTotal">400 ج.م</span></div>
-            <div><span>مصاريف الشحن:</span> <span id="pReceiptShipping">1 ج.م</span></div>
-            <div><span>الخصم:</span> <span id="pReceiptDiscount">0 ج.م</span></div>
-            <div class="grand-total"><span>الإجمالي النهائي:</span> <span id="pReceiptTotal">401 ج.م</span></div>
-        </div>
-
-        <div class="footer-note">
-            شكراً لتعاملك معنا في Nisa Store ✨ - نعدكم دائماً بالأفضل
-        </div>
-    </div>
-</div>
-
-<script>
-    function downloadInvoiceAsImage() {
-        const container = document.getElementById('invoiceContent');
         
-        html2canvas(container, { scale: 2 }).then(canvas => {
-            const imageStr = canvas.toDataURL('image/png');
-            
-            // حل متوافق تماماً مع التطبيق لتنزيل الصورة مباشرة بدون رسائل معقدة
-            const downloadLink = document.createElement('a');
-            downloadLink.href = imageStr;
-            downloadLink.download = 'NisaStore-Invoice-' + Date.now() + '.png';
-            
-            document.body.appendChild(downloadLink);
-            downloadLink.click();
-            document.body.removeChild(downloadLink);
-        }).catch(err => {
-            alert('تعذر حفظ الصورة، يجدر المحاولة مرة أخرى.');
-        });
-    }
-</script>
+        <div style="margin-top: 10px; font-size: 12px;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+            <span>المجموع الفرعي:</span> <span id="subTotal">0 ج.م</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+            <span>مصاريف الشحن:</span> 
+            <input type="number" id="shippingFee" value="0" style="width: 80px; padding: 2px;" oninput="calculateTotal()">
+          </div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+            <span>الخصم:</span> 
+            <input type="number" id="discountFee" value="0" style="width: 80px; padding: 2px;" oninput="calculateTotal()">
+          </div>
+          <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 14px; color: var(--primary); margin-top: 5px; border-top: 1px solid #ddd; padding-top: 5px;">
+            <span>الإجمالي النهائي:</span> <span id="grandTotal">0 ج.م</span>
+          </div>
+        </div>
 
+        <div style="display: flex; gap: 10px; margin-top: 15px;">
+          <button class="btn-success" style="flex: 2;" onclick="completeOrder()">إتمام وطباعة الفاتورة ✔️</button>
+          <button class="btn-danger" style="flex: 1;" onclick="clearCart()">إفراغ السلة</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. قسم المخزن -->
+    <div id="inventorySection" class="app-section">
+      <div class="card">
+        <h3>إضافة منتج جديد للمخزن</h3>
+        <div class="form-group"><label>اسم المنتج:</label><input type="text" id="pName"></div>
+        <div class="form-group"><label>سعر الشراء:</label><input type="number" id="pBuyPrice"></div>
+        <div class="form-group"><label>سعر البيع:</label><input type="number" id="pSellPrice"></div>
+        <div class="form-group"><label>الكمية المتاحة:</label><input type="number" id="pQty"></div>
+        <button class="btn-primary" style="width: 100%;" onclick="addNewProduct()">حفظ المنتج في المخزن</button>
+      </div>
+
+      <div class="card">
+        <h3>مخزون المنتجات الحالي</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>الاسم</th>
+              <th>الشراء</th>
+              <th>البيع</th>
+              <th>الكمية</th>
+              <th>إجراء</th>
+            </tr>
+          </thead>
+          <tbody id="inventoryManageTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 3. سجل المبيعات -->
+    <div id="salesHistorySection" class="app-section">
+      <div class="card">
+        <h3>سجل الفواتير السابقة</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>رقم الفاتورة</th>
+              <th>التاريخ</th>
+              <th>العميل</th>
+              <th>الإجمالي</th>
+              <th>معاينة</th>
+            </tr>
+          </thead>
+          <tbody id="salesHistoryTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 4. قسم الطباعة والفواتير الإلكترونية (بالتصميم المضغوط الجديد) -->
+    <div id="pdfPrintSection" class="app-section">
+      <div class="card">
+        <h3>معاينة وطباعة الفواتير</h3>
+        <div class="form-group">
+          <label>اختر الفاتورة:</label>
+          <select id="pdfInvoiceSelect" onchange="previewSelectedInvoiceForShare()">
+            <option value="">-- اختر الفاتورة للمعاينة --</option>
+          </select>
+        </div>
+        
+        <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+          <button class="btn-success" style="flex: 1;" onclick="downloadInvoiceAsImage()">حفظ كصورة 📷</button>
+          <button class="btn-primary" style="flex: 1;" onclick="window.print()">طباعة A4 🖨️</button>
+        </div>
+
+        <div id="sharePreviewContainer" style="display: none;">
+          <!-- الفاتورة المدمجة والمخصصة للموبايل -->
+          <div id="invoiceContent" class="invoice-box">
+            <div class="invoice-header">
+              <h2>Nisa Store POS</h2>
+              <p style="margin: 2px 0; font-size: 11px; color: #555;">فاتورة مبيعات رسمية</p>
+            </div>
+
+            <div style="margin-bottom: 8px; font-size: 12px; background: #fff5f8; padding: 6px; border-radius: 5px;">
+              <div><strong>رقم الفاتورة:</strong> <span id="pReceiptId">-</span></div>
+              <div><strong>التاريخ:</strong> <span id="pReceiptDate">-</span></div>
+              <div><strong>العميل:</strong> <span id="pReceiptCustomer">-</span></div>
+              <div><strong>حالة الدفع:</strong> مدفوع كاش ✔️</div>
+            </div>
+
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>المنتج</th>
+                  <th>الكمية</th>
+                  <th>السعر</th>
+                  <th>الإجمالي</th>
+                </tr>
+              </thead>
+              <tbody id="pReceiptItems"></tbody>
+            </table>
+
+            <div class="totals">
+              <div><span>المجموع الفرعي:</span> <span id="pReceiptSubTotal">0 ج.م</span></div>
+              <div><span>مصاريف الشحن:</span> <span id="pReceiptShipping">0 ج.م</span></div>
+              <div><span>الخصم:</span> <span id="pReceiptDiscount">0 ج.م</span></div>
+              <div class="grand-total"><span>الإجمالي النهائي:</span> <span id="pReceiptTotal">0 ج.م</span></div>
+            </div>
+
+            <div class="footer-note">
+              شكراً لتعاملك معنا في Nisa Store ✨ - نعدكم دائماً بالأفضل
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. التقارير اليومية والأرباح -->
+    <div id="reportsSection" class="app-section">
+      <div class="card">
+        <h3>التقارير اليومية والأرباح</h3>
+        <div style="font-size: 13px; line-height: 1.8;">
+          <div>🧾 إجمالي عدد فواتير اليوم: <strong id="dailyCount">0</strong></div>
+          <div>💰 إجمالي مبيعات اليوم: <strong id="dailySalesTotal" style="color:var(--primary);">0 ج.م</strong></div>
+          <div>📈 إجمالي الأرباح الصافية: <strong id="dailyNetProfit" style="color:green;">0 ج.م</strong></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // بيانات النظام والتخزين المحلي
+    let products = JSON.parse(localStorage.getItem('nisa_products')) || [
+      { id: 1, name: 'فيلورا جولد', buy: 350, sell: 400, qty: 10, img: 'https://via.placeholder.com/60' }
+    ];
+    let cart = [];
+    let sales = JSON.parse(localStorage.getItem('nisa_sales')) || [];
+    let expenses = JSON.parse(localStorage.getItem('nisa_expenses')) || [];
+
+    function setStorage(key, data) {
+      localStorage.setItem(key, JSON.stringify(data));
+    }
+
+    function handleLogin() {
+      document.getElementById('loginSection').style.display = 'none';
+      document.getElementById('mainApp').style.display = 'block';
+      renderProducts();
+      renderInventoryTable();
+      renderSalesHistory();
+      renderPdfSelectOptions();
+      renderDailyReports();
+    }
+
+    function logout() {
+      document.getElementById('mainApp').style.display = 'none';
+      document.getElementById('loginSection').style.display = 'flex';
+    }
+
+    function switchSection(sectionId) {
+      document.querySelectorAll('.app-section').forEach(sec => sec.classList.remove('active'));
+      document.querySelectorAll('.nav-tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.getElementById(sectionId).classList.add('active');
+      event.target.classList.add('active');
+      if(sectionId === 'reportsSection') renderDailyReports();
+    }
+
+    // إدارة المخزن
+    function addNewProduct() {
+      const name = document.getElementById('pName').value;
+      const buy = parseFloat(document.getElementById('pBuyPrice').value) || 0;
+      const sell = parseFloat(document.getElementById('pSellPrice').value) || 0;
+      const qty = parseInt(document.getElementById('pQty').value) || 0;
+
+      if(!name) return alert('برجاء إدخال اسم المنتج');
+
+      products.push({ id: Date.now(), name, buy, sell, qty, img: 'https://via.placeholder.com/60' });
+      setStorage('nisa_products', products);
+      renderProducts();
+      renderInventoryTable();
+      alert('✨ تمت الإضافة للمخزن بنجاح');
+      document.getElementById('pName').value = '';
+      document.getElementById('pBuyPrice').value = '';
+      document.getElementById('pSellPrice').value = '';
+      document.getElementById('pQty').value = '';
+    }
+
+    function renderInventoryTable() {
+      const tbody = document.getElementById('inventoryManageTable');
+      if(!tbody) return;
+      tbody.innerHTML = '';
+      products.forEach(p => {
+        tbody.innerHTML += `
+          <tr>
+            <td>${p.name}</td>
+            <td>${p.buy} ج.م</td>
+            <td>${p.sell} ج.م</td>
+            <td><b>${p.qty}</b></td>
+            <td><button class="btn-danger" style="padding:2px 6px;" onclick="deleteProduct(${p.id})">حذف</button></td>
+          </tr>
+        `;
+      });
+    }
+
+    function deleteProduct(id) {
+      if(confirm('هل تريد حذف المنتج؟')) {
+        products = products.filter(p => p.id !== id);
+        setStorage('nisa_products', products);
+        renderProducts();
+        renderInventoryTable();
+      }
+    }
+
+    // نقطة البيع POS
+    function renderProducts() {
+      const grid = document.getElementById('productList');
+      const search = document.getElementById('searchProduct').value.toLowerCase();
+      if(!grid) return;
+      grid.innerHTML = '';
+      products.filter(p => p.name.toLowerCase().includes(search)).forEach(p => {
+        grid.innerHTML += `
+          <div class="product-card" onclick="addToCart(${p.id})">
+            <img src="${p.img}" alt="">
+            <h4>${p.name}</h4>
+            <div class="price">${p.sell} ج.م</div>
+            <div class="stock">متبقي: ${p.qty}</div>
+          </div>
+        `;
+      });
+    }
+
+    function addToCart(id) {
+      const prod = products.find(p => p.id === id);
+      if(!prod || prod.qty <= 0) return alert('المنتج نفذ من المخزن!');
+      const item = cart.find(i => i.id === id);
+      if(item) {
+        if(item.qty >= prod.qty) return alert('تجاوزت الكمية المتاحة بالمخزن!');
+        item.qty++;
+      } else {
+        cart.push({ id: prod.id, name: prod.name, price: prod.sell, buyPrice: prod.buy, qty: 1 });
+      }
+      renderCart();
+    }
+
+    function changeCartQty(id, change) {
+      const item = cart.find(i => i.id === id);
+      const prod = products.find(p => p.id === id);
+      if(!item) return;
+      const newQty = item.qty + change;
+      if(newQty > prod.qty) return alert('الكمية غير متوفرة!');
+      if(newQty <= 0) cart = cart.filter(i => i.id !== id);
+      else item.qty = newQty;
+      renderCart();
+    }
+
+    function clearCart() { cart = []; renderCart(); }
+
+    function renderCart() {
+      const tbody = document.getElementById('cartTable');
+      if(!tbody) return;
+      tbody.innerHTML = '';
+      if(cart.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="color: #886565;">السلة فارغة حالياً</td></tr>`;
+      } else {
+        cart.forEach(item => {
+          tbody.innerHTML += `
+            <tr>
+              <td>${item.name}</td>
+              <td>
+                <button class="btn-danger" style="padding:2px 5px;" onclick="changeCartQty(${item.id}, -1)">-</button>
+                <span>${item.qty}</span>
+                <button class="btn-success" style="padding:2px 5px;" onclick="changeCartQty(${item.id}, 1)">+</button>
+              </td>
+              <td>${item.price * item.qty} ج.م</td>
+              <td><button class="btn-danger" style="padding:2px 5px;" onclick="cart = cart.filter(i => i.id !== ${item.id}); renderCart();">✕</button></td>
+            </tr>
+          `;
+        });
+      }
+      calculateTotal();
+    }
+
+    function calculateTotal() {
+      const subTotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+      const shipping = parseFloat(document.getElementById('shippingFee').value) || 0;
+      const discount = parseFloat(document.getElementById('discountFee').value) || 0;
+      const grandTotal = (subTotal + shipping) - discount;
+      document.getElementById('subTotal').innerText = subTotal + " ج.م";
+      document.getElementById('grandTotal').innerText = grandTotal + " ج.م";
+      return { subTotal, shipping, discount, grandTotal };
+    }
+
+    function completeOrder() {
+      if(cart.length === 0) return alert('السلة فارغة!');
+      const totals = calculateTotal();
+      const invoiceId = 'NS-' + Math.floor(100000 + Math.random() * 900000);
+      
+      cart.forEach(c => {
+        const p = products.find(prod => prod.id === c.id);
+        if(p) p.qty -= c.qty;
+      });
+      setStorage('nisa_products', products);
+
+      const newInv = {
+        id: invoiceId,
+        date: new Date().toISOString(),
+        customer: document.getElementById('invoiceCustomerSelect').value || 'عميل نقدي',
+        items: [...cart],
+        subTotal: totals.subTotal,
+        shipping: totals.shipping,
+        discount: totals.discount,
+        total: totals.grandTotal
+      };
+
+      sales.push(newInv);
+      setStorage('nisa_sales', sales);
+      clearCart();
+      renderProducts();
+      renderInventoryTable();
+      renderSalesHistory();
+      renderPdfSelectOptions();
+      viewInvoiceFromHistory(invoiceId);
+      switchSection('pdfPrintSection');
+    }
+
+    function renderSalesHistory() {
+      const tbody = document.getElementById('salesHistoryTable');
+      if(!tbody) return;
+      tbody.innerHTML = '';
+      sales.slice().reverse().forEach(inv => {
+        tbody.innerHTML += `
+          <tr>
+            <td>${inv.id}</td>
+            <td>${new Date(inv.date).toLocaleDateString('ar-EG')}</td>
+            <td>${inv.customer}</td>
+            <td><b>${inv.total} ج.م</b></td>
+            <td><button class="btn-info" style="padding:2px 6px;" onclick="viewInvoiceFromHistory('${inv.id}')">معاينة</button></td>
+          </tr>
+        `;
+      });
+    }
+
+    function renderPdfSelectOptions() {
+      const select = document.getElementById('pdfInvoiceSelect');
+      if(!select) return;
+      select.innerHTML = '<option value="">-- اختر الفاتورة للمعاينة --</option>';
+      sales.slice().reverse().forEach(inv => {
+        select.innerHTML += `<option value="${inv.id}">${inv.id} - ${inv.customer} (${inv.total} ج.م)</option>`;
+      });
+    }
+
+    function previewSelectedInvoiceForShare() {
+      const id = document.getElementById('pdfInvoiceSelect').value;
+      const container = document.getElementById('sharePreviewContainer');
+      if(!id) { container.style.display = 'none'; return; }
+      const inv = sales.find(s => s.id === id);
+      if(inv) {
+        document.getElementById('pReceiptId').innerText = inv.id;
+        document.getElementById('pReceiptDate').innerText = new Date(inv.date).toLocaleString('ar-EG');
+        document.getElementById('pReceiptCustomer').innerText = inv.customer;
+        
+        const tbody = document.getElementById('pReceiptItems');
+        tbody.innerHTML = '';
+        inv.items.forEach((item, idx) => {
+          tbody.innerHTML += `
+            <tr>
+              <td>${idx + 1}</td>
+              <td>${item.name}</td>
+              <td>${item.qty}</td>
+              <td>${item.price} ج.م</td>
+              <td>${item.price * item.qty} ج.م</td>
+            </tr>
+          `;
+        });
+
+        document.getElementById('pReceiptSubTotal').innerText = inv.subTotal + " ج.م";
+        document.getElementById('pReceiptShipping').innerText = inv.shipping + " ج.م";
+        document.getElementById('pReceiptDiscount').innerText = inv.discount + " ج.م";
+        document.getElementById('pReceiptTotal').innerText = inv.total + " ج.م";
+        container.style.display = 'block';
+      }
+    }
+
+    function viewInvoiceFromHistory(id) {
+      switchSection('pdfPrintSection');
+      document.getElementById('pdfInvoiceSelect').value = id;
+      previewSelectedInvoiceForShare();
+    }
+
+    // حفظ الفاتورة كصورة بشكل سلس ومباشر
+    function downloadInvoiceAsImage() {
+      const container = document.getElementById('invoiceContent');
+      if(document.getElementById('sharePreviewContainer').style.display === 'none') {
+        return alert('برجاء اختيار الفاتورة أولاً!');
+      }
+      
+      html2canvas(container, { scale: 2 }).then(canvas => {
+        const imageStr = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.href = imageStr;
+        link.download = 'NisaStore-' + Date.now() + '.png';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }).catch(() => {
+        alert('تعذر حفظ الصورة، حاول مرة أخرى.');
+      });
+    }
+
+    function renderDailyReports() {
+      const todayStr = new Date().toDateString();
+      const todaySales = sales.filter(s => new Date(s.date).toDateString() === todayStr);
+      const totalSales = todaySales.reduce((sum, s) => sum + s.total, 0);
+      
+      let grossProfit = 0;
+      todaySales.forEach(s => {
+        s.items.forEach(item => {
+          grossProfit += (item.price - (item.buyPrice || 0)) * item.qty;
+        });
+      });
+
+      document.getElementById('dailyCount').innerText = todaySales.length;
+      document.getElementById('dailySalesTotal').innerText = totalSales + " ج.م";
+      document.getElementById('dailyNetProfit').innerText = grossProfit + " ج.م";
+    }
+  </script>
 </body>
 </html>
